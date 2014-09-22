@@ -102,6 +102,7 @@ def process_changed_files(temp_tree):
                 script_command = [script, index_file, temp_file, mime_type]
                 script_output = subprocess.check_output(script_command, stderr=subprocess.STDOUT)
             except OSError as err:
+                # XXX: should be determined when building scripts
                 if err.errno == 13:
                     print "Skipping non-executable file in scripts directory '{script}'".format(script=script)
                     continue
@@ -119,6 +120,7 @@ def process_changed_files(temp_tree):
         sys.exit(1)
     else:
         sys.exit(0)
+
 
 if __name__ == '__main__':
     autoupdate_check()
