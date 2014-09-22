@@ -30,11 +30,15 @@ def check_puppet():
 
     # Syntax
     try:
-        subprocess.check_output(['puppet', 'parser', 'validate', TEMP_FILE])
+        subprocess.check_output(['puppet', 'parser', 'validate', TEMP_FILE], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
         exit_code = PENDER_VETO
         print "Puppet syntax check failed:"
         for line in err.output.splitlines():
+            if 'Warning: You cannot collect exported resources without storeconfigs being set' in line:
+                continue
+            if 'Warning: You cannot collect without storeconfigs being set' in line:
+                continue
             print '    {}'.format(line)
 
     # puppet-lint
