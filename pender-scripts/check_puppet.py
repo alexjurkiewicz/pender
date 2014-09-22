@@ -34,7 +34,8 @@ def check_puppet():
     except subprocess.CalledProcessError as err:
         exit_code = PENDER_VETO
         print "Puppet syntax check failed:"
-        print err.output
+        for line in err.output.splitlines():
+            print '    {}'.format(line)
 
     # puppet-lint
     try:
@@ -42,7 +43,8 @@ def check_puppet():
     except subprocess.CalledProcessError as err:
         exit_code = PENDER_VETO
         print "puppet-lint failed:"
-        print err.output
+        for line in err.output.splitlines():
+            print '    {}'.format(line)
 
     sys.exit(exit_code)
 

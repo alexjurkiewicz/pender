@@ -29,6 +29,8 @@ def check_erb():
     if output == 'Syntax OK':
         return PENDER_OK
     else:
+        for line in output.splitlines():
+            print '    {}'.format(line)
         return PENDER_VETO
 
 
@@ -41,7 +43,8 @@ def check_ruby():
         return PENDER_OK
     except subprocess.CalledProcessError as err:
         print "Ruby syntax check failed:"
-        print err.output
+        for line in err.output.splitlines():
+            print '    {}'.format(line)
         return PENDER_VETO
 
 
