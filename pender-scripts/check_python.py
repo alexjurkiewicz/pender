@@ -15,6 +15,8 @@ import subprocess
 REAL_FILE = sys.argv[1]
 TEMP_FILE = sys.argv[2]
 FILE_MIME = sys.argv[3]
+PENDER_OK = 0
+PENDER_VETO = 10
 
 
 def check_syntax(temp_file):
@@ -27,6 +29,8 @@ def check_syntax(temp_file):
         print "Python syntax check failed:"
         for line in err.output.splitlines():
             print '    {}'.format(line)
+        return PENDER_VETO
+    return PENDER_OK
 
 
 def check_pylint(temp_file):
@@ -48,6 +52,8 @@ def check_pylint(temp_file):
         print "Pylint check failed:"
         for line in err.output.splitlines():
             print '    {}'.format(line)
+        return PENDER_VETO
+    return PENDER_OK
 
 
 def check_pyflake(temp_file):
@@ -68,12 +74,21 @@ def check_pyflake(temp_file):
         print "flake8 check failed:"
         for line in err.output.splitlines():
             print '    {}'.format(line)
+        return PENDER_VETO
+    return PENDER_OK
+
+
+def check_file():
+    '''
+    Run all checks on file
+    '''
+    exit_code = PENDER_OK
+    exit_code = max(exit_code, check_syntax(TEMP_FILE))
+    exit_code = max(exit_code, check_pylint(TEMP_FILE))
+    exit_code = max(exit_code, check_pyflake(TEMP_FILE))
+    sys.exit(exit_code)
 
 if __name__ == '__main__':
     if not (REAL_FILE.endswith('.py') or FILE_MIME == 'text/x-python'):
-        sys.exit(0)
-    check_syntax(TEMP_FILE)
-    check_pylint(TEMP_FILE)
-    check_pyflake(TEMP_FILE)
-
-sys.exit(0)
+        sys.exit(PENDER_OK)
+    check_file()

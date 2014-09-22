@@ -107,12 +107,12 @@ def process_changed_files(temp_tree):
                     print "Skipping non-executable file in scripts directory '{script}'".format(script=script)
                     continue
             except subprocess.CalledProcessError as err:
-                print "{bold}{script} failed while checking {index_file}, skipping. Output was:{end}\n{output}".format(
-                    script=script, index_file=index_file, output=err.output, bold=TERM_BOLD, end=TERM_END)
-                continue
+                script_output = err.output
+                if err.returncode == 10:
+                    errors += 1
+                    print "{bold}{file}:{end}".format(
+                          file=index_file, script=os.path.basename(script), bold=TERM_BOLD, end=TERM_END)
             if script_output:
-                errors += 1
-                print "{bold}{f}:{end}".format(f=index_file, bold=TERM_BOLD, end=TERM_END)
                 for line in script_output.splitlines():
                     print '    {line}'.format(line=line)
     if errors:
@@ -128,5 +128,8 @@ if __name__ == '__main__':
     TEMP_TREE = tempfile.mkdtemp()
     try:
         process_changed_files(TEMP_TREE)
+    except KeyboardInterrupt:
+        sys.stdout.flush()
+        sys.exit(1)
     finally:
         shutil.rmtree(TEMP_TREE)

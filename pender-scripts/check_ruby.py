@@ -10,6 +10,8 @@ import subprocess
 REAL_FILE = sys.argv[1]
 TEMP_FILE = sys.argv[2]
 FILE_MIME = sys.argv[3]
+PENDER_OK = 0
+PENDER_VETO = 10
 
 
 def check_erb():
@@ -23,7 +25,11 @@ def check_erb():
         ["ruby", "-c"],
         stdin=erb_proc.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     erb_proc.stdout.close()
-    print ruby_proc.communicate()[0]
+    output = ruby_proc.communicate()[0].strip()
+    if output == 'Syntax OK':
+        return PENDER_OK
+    else:
+        return PENDER_VETO
 
 
 def check_ruby():
@@ -32,17 +38,19 @@ def check_ruby():
     '''
     try:
         subprocess.check_output(['ruby', '-c', TEMP_FILE], stderr=subprocess.STDOUT)
+        return PENDER_OK
     except subprocess.CalledProcessError as err:
         print "Ruby syntax check failed:"
         print err.output
+        return PENDER_VETO
 
 
 if __name__ == '__main__':
     # See if we should run
     if not (REAL_FILE.endswith('.rb') or REAL_FILE.endswith('.erb') or FILE_MIME == 'text/x-ruby'):
-        sys.exit(0)
-
+        sys.exit(PENDER_OK)
     if REAL_FILE.endswith('.erb'):
-        check_erb()
-    else:  # It's pure Ruby
-        check_ruby()
+        RC = max(PENDER_OK, check_erb())
+    else:  # .rb
+        RC = max(PENDER_OK, check_ruby())
+    sys.exit(RC)
