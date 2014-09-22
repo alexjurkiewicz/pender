@@ -41,4 +41,4 @@ The basic points for writing a Pender script are:
   * 10: Veto the commit
   * 1: Internal script error (commit is OKed)
   * Any other return code: Reserved (currently interpreted as script error)
-* Script's stdout will always be shown. Stderr will be shown if the script exits with an error.
+* Script's stdout & stderr will always be shown.
