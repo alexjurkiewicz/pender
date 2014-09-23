@@ -5,7 +5,7 @@ Pender's pre-commit hook. Please see README.md for more information.
 '''
 
 # CONFIG
-SCRIPTS_DIR = 'pender-scripts/'
+PLUGINS_DIR = 'pender-plugins/'
 # END CONFIG
 
 import os
@@ -85,7 +85,7 @@ def process_changed_files(temp_tree):
     process each changed file
     '''
     errors = 0
-    scripts = [os.path.join(SCRIPTS_DIR, script) for script in os.walk(SCRIPTS_DIR).next()[2]]
+    plugins = [os.path.join(PLUGINS_DIR, plugin) for plugin in os.walk(PLUGINS_DIR).next()[2]]
     changed_files = get_changed_files()
     for index_file in changed_files:
         temp_file = create_temp_file(temp_tree, index_file)
@@ -96,24 +96,24 @@ def process_changed_files(temp_tree):
         except subprocess.CalledProcessError:
             mime_type = 'application/octet-stream'
 
-        # Call every script with this file
-        for script in scripts:
+        # Call every plugin with this file
+        for plugin in plugins:
             try:
-                script_command = [script, index_file, temp_file, mime_type]
-                script_output = subprocess.check_output(script_command, stderr=subprocess.STDOUT)
+                plugin_command = [plugin, index_file, temp_file, mime_type]
+                plugin_output = subprocess.check_output(plugin_command, stderr=subprocess.STDOUT)
             except OSError as err:
-                # XXX: should be determined when building scripts
+                # XXX: should be determined when building plugins
                 if err.errno == 13:
-                    print "Skipping non-executable file in scripts directory '{script}'".format(script=script)
+                    print "Skipping non-executable file in plugins directory '{plugin}'".format(plugin=plugin)
                     continue
             except subprocess.CalledProcessError as err:
-                script_output = err.output
+                plugin_output = err.output
                 if err.returncode == 10:
                     errors += 1
                     print "{bold}{file}:{end}".format(
-                          file=index_file, script=os.path.basename(script), bold=TERM_BOLD, end=TERM_END)
-            if script_output:
-                for line in script_output.splitlines():
+                          file=index_file, plugin=os.path.basename(plugin), bold=TERM_BOLD, end=TERM_END)
+            if plugin_output:
+                for line in plugin_output.splitlines():
                     print '    {line}'.format(line=line)
     if errors:
         print "{bold}Found {errors} errors, aborting commit.{end}".format(errors=errors, bold=TERM_BOLD, end=TERM_END)
