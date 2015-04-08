@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-'''
-This is a Pender plugin to check Ruby & ERB files.
-'''
+"""A Pender plugin to check Ruby & ERB files."""
 
 import sys
 import subprocess
@@ -15,15 +13,15 @@ PENDER_VETO = 10
 
 
 def check_erb():
-    '''
-    Check ERB file syntax
-    '''
+    """Check ERB file syntax."""
     erb_proc = subprocess.Popen(
         ['erb', '-P', '-x', '-T', '-', TEMP_FILE],
         stdout=subprocess.PIPE)
     ruby_proc = subprocess.Popen(
         ["ruby", "-c"],
-        stdin=erb_proc.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdin=erb_proc.stdout,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
     erb_proc.stdout.close()
     output = ruby_proc.communicate()[0].strip()
     if output == 'Syntax OK':
@@ -35,11 +33,10 @@ def check_erb():
 
 
 def check_ruby():
-    '''
-    Check Ruby file syntax
-    '''
+    """Check Ruby file syntax."""
     try:
-        subprocess.check_output(['ruby', '-c', TEMP_FILE], stderr=subprocess.STDOUT)
+        subprocess.check_output(['ruby', '-c', TEMP_FILE],
+                                stderr=subprocess.STDOUT)
         return PENDER_OK
     except subprocess.CalledProcessError as err:
         print "Ruby syntax check failed:"
@@ -50,7 +47,9 @@ def check_ruby():
 
 if __name__ == '__main__':
     # See if we should run
-    if not (REAL_FILE.endswith('.rb') or REAL_FILE.endswith('.erb') or FILE_MIME == 'text/x-ruby'):
+    if not (REAL_FILE.endswith('.rb') or
+            REAL_FILE.endswith('.erb') or
+            FILE_MIME == 'text/x-ruby'):
         sys.exit(PENDER_OK)
     if REAL_FILE.endswith('.erb'):
         RC = max(PENDER_OK, check_erb())

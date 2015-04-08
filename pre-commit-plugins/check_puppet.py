@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-'''
-This is a Pender plugin to check Puppet files using puppet syntax and puppet-lint
-'''
+"""Pender plugin to check Puppet files using puppet syntax and puppet-lint."""
 
 # CHECK CONFIG
 PUPPET_LINT_IGNORE_RULES = []  # list
@@ -19,9 +17,7 @@ PENDER_VETO = 10
 
 
 def check_puppet():
-    '''
-    Check Puppet syntax
-    '''
+    """Check Puppet syntax."""
     # See if we should run
     if REAL_FILE[-3:] != '.pp':
         return PENDER_OK
@@ -30,20 +26,25 @@ def check_puppet():
 
     # Syntax
     try:
-        subprocess.check_output(['puppet', 'parser', 'validate', TEMP_FILE], stderr=subprocess.STDOUT)
+        syntax_args = ['puppet', 'parser', 'validate', TEMP_FILE]
+        subprocess.check_output(syntax_args, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
         exit_code = PENDER_VETO
         print "Puppet syntax check failed:"
         for line in err.output.splitlines():
-            if 'Warning: You cannot collect exported resources without storeconfigs being set' in line:
+            if 'Warning: You cannot collect exported resources without ' \
+                    'storeconfigs being set' in line:
                 continue
-            if 'Warning: You cannot collect without storeconfigs being set' in line:
+            if 'Warning: You cannot collect without storeconfigs being set' in \
+                    line:
                 continue
             print '    {}'.format(line)
 
     # puppet-lint
     try:
-        subprocess.check_output(['puppet-lint', '--fail-on-warnings'] + PUPPET_LINT_IGNORE_RULES + [TEMP_FILE])
+        lint_args = ['puppet-lint', '--fail-on-warnings'] + \
+            PUPPET_LINT_IGNORE_RULES + TEMP_FILE
+        subprocess.check_output(lint_args)
     except subprocess.CalledProcessError as err:
         exit_code = PENDER_VETO
         print "puppet-lint failed:"
