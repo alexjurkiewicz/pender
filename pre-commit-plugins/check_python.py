@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """A Pender plugin to lint Python files."""
 
 import os
@@ -17,7 +16,7 @@ IGNORED_CODES = ('C0111',  # missing docstring -- redundant with pep257
                  'C0303',  # trailing whitespace -- redundant with pep8
                  'C0330',  # wrong continued indentation -- conflicts with pep8
                  'W0511',  # xxx/fixme etc -- should not veto commit
-                 )
+                )
 
 available_linters = ('pylint', 'pep8', 'pep257')
 # Check dependencies are installed
@@ -27,10 +26,8 @@ for linter in available_linters:
         linters.append(linter)
     else:
         print "Mising Python linter %s, you should install this!" % linter
-PYLAMA_ARGS = ('pylama',
-               '-l', ','.join(linters),
-               '-i', ','.join(IGNORED_CODES), TEMP_FILE
-               )
+PYLAMA_ARGS = ('pylama', '-l', ','.join(linters), '-i',
+               ','.join(IGNORED_CODES), TEMP_FILE)
 
 rc = PENDER_OK
 # Check the file is Python

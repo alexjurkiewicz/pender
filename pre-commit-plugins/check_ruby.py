@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """A Pender plugin to check Ruby & ERB files."""
 
 import sys
@@ -15,14 +14,12 @@ PENDER_VETO = 10
 
 def check_erb():
     """Check ERB file syntax."""
-    erb_proc = subprocess.Popen(
-        ['erb', '-P', '-x', '-T', '-', TEMP_FILE],
-        stdout=subprocess.PIPE)
-    ruby_proc = subprocess.Popen(
-        ["ruby", "-c"],
-        stdin=erb_proc.stdout,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
+    erb_proc = subprocess.Popen(['erb', '-P', '-x', '-T', '-', TEMP_FILE],
+                                stdout=subprocess.PIPE)
+    ruby_proc = subprocess.Popen(["ruby", "-c"],
+                                 stdin=erb_proc.stdout,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT)
     erb_proc.stdout.close()  # XXX: is this right??
     output = ruby_proc.communicate()[0].strip()
     if output == 'Syntax OK':
@@ -48,8 +45,7 @@ def check_ruby():
 
 if __name__ == '__main__':
     # See if we should run
-    if not (REAL_FILE.endswith('.rb') or
-            REAL_FILE.endswith('.erb') or
+    if not (REAL_FILE.endswith('.rb') or REAL_FILE.endswith('.erb') or
             FILE_MIME == 'text/x-ruby'):
         sys.exit(PENDER_OK)
     if not distutils.spawn.find_executable('ruby'):

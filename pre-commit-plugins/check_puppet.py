@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """Pender plugin to check Puppet files using puppet syntax and puppet-lint."""
 
 # CHECK CONFIG
@@ -52,6 +51,7 @@ def check_puppet():
             print '    {}'.format(line)
 
     sys.exit(exit_code)
+
 
 if __name__ == '__main__':
     check_puppet()
