@@ -2,95 +2,58 @@
 
 """
 A Pender plugin to check Python files.
-
-Uses python syntax, pylint and flake8 (pyflakes & pep8).
 """
 
-# CHECK CONFIG
-MAX_LINE_LEN = 120  # flake8 default is 79
-PYLINT_IGNORE_CHECKS = ['W0511']  # list
-# END CHECK CONFIG
-
+import os
 import sys
 import subprocess
+import distutils.spawn
 
 REAL_FILE = sys.argv[1]
 TEMP_FILE = sys.argv[2]
 FILE_MIME = sys.argv[3]
 PENDER_OK = 0
 PENDER_VETO = 10
+DEBUG = True if 'PENDER_DEBUG' in os.environ else False
 
+available_linters = ('pylint', 'pep8', 'pep257', 'pyfake')
+# Check dependencies are installed
+linters = []
+for linter in available_linters:
+    if distutils.spawn.find_executable(linter):
+        linters.append(linter)
+    else:
+        print "Mising Python linter %s, you should install this!" % linter
+PYLAMA_ARGS = ('pylama', '-l', ','.join(linters), '-i', 'C0111,C0303', TEMP_FILE)
 
-def check_syntax(temp_file):
-    """Check python syntax of the target file."""
-    try:
-        subprocess.check_output(['python', '-m', 'py_compile', temp_file])
-    except subprocess.CalledProcessError as err:
-        print "Python syntax check failed:"
-        for line in err.output.splitlines():
-            print '    {}'.format(line)
-        return PENDER_VETO
-    return PENDER_OK
+rc = PENDER_OK
+# Check the file is Python
+if not (REAL_FILE.endswith('.py') or FILE_MIME == 'text/x-python'):
+    sys.exit(PENDER_OK)
 
+# Check syntax
+try:
+    subprocess.check_output(['python', '-m', 'py_compile', TEMP_FILE])
+except subprocess.CalledProcessError as err:
+    print "Python syntax check failed:"
+    for line in err.output.splitlines():
+        print '    {}'.format(line)
+    rc = PENDER_VETO
 
-def check_pylint(temp_file):
-    """
-    PyLint check.
+# Check PyLama
+try:
+    subprocess.check_output(PYLAMA_ARGS)
+except subprocess.CalledProcessError as err:
+    print "pylama check failed:"
+    for line in err.output.splitlines():
+        # pylama prints the full file path before each error
+        # we want to hide the temporary file path
+        try:
+            line = line[line.index(REAL_FILE):]
+        except ValueError:
+            pass
+        print '    {}'.format(line)
+    sys.exit(PENDER_VETO)
 
-    Exclude:
-      - C0301: line too long (reported better by pyflake E501)
-      - C0330: Wrong hanging indentation. (reported better by pyflake E126)
-    """
-    ignored = PYLINT_IGNORE_CHECKS.extend(['C0301', 'C0330'])
-    try:
-        pylint_cmdline = ['pylint',
-                          '--disable={}'.format(','.join(ignored)),
-                          '--rcfile=/dev/null',
-                          '--reports=n',
-                          '--msg-template={line:3d}: {msg} ({msg_id})',
-                          temp_file]
-        subprocess.check_output(pylint_cmdline)
-    except subprocess.CalledProcessError as err:
-        print "Pylint check failed:"
-        for line in err.output.splitlines():
-            print '    {}'.format(line)
-        return PENDER_VETO
-    return PENDER_OK
+sys.exit(rc)
 
-
-def check_pyflake(temp_file):
-    """
-    Check file with PyFlake.
-
-    Exclude:
-      - E225 missing whitespace around operator (pylint C0326)
-      - F821 undefined name (pylint E0602)
-      - F841 local variable '...' is assigned to but never used (pylint W0612)
-      - E701 multiple statements on one line (colon) (pylint C0321)
-    """
-    try:
-        subprocess.check_output(['flake8',
-                                 '--max-line-length={}'.format(MAX_LINE_LEN),
-                                 '--ignore=E225,F821,E701',
-                                 '--format=%(row)3d: %(text)s (%(code)s)',
-                                 temp_file])
-    except subprocess.CalledProcessError as err:
-        print "flake8 check failed:"
-        for line in err.output.splitlines():
-            print '    {}'.format(line)
-        return PENDER_VETO
-    return PENDER_OK
-
-
-def check_file():
-    """Run all checks on file."""
-    exit_code = PENDER_OK
-    exit_code = max(exit_code, check_syntax(TEMP_FILE))
-    exit_code = max(exit_code, check_pylint(TEMP_FILE))
-    exit_code = max(exit_code, check_pyflake(TEMP_FILE))
-    sys.exit(exit_code)
-
-if __name__ == '__main__':
-    if not (REAL_FILE.endswith('.py') or FILE_MIME == 'text/x-python'):
-        sys.exit(PENDER_OK)
-    check_file()
