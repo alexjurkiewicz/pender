@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Pender's pre-commit hook.
+Pender pre-commit hook.
 
 For more information, see:
     https://github.com/alexjurkiewicz/pender
@@ -14,19 +14,21 @@ import subprocess
 import tempfile
 import logging
 
-# CONFIG
-PENDER_NAME = 'pre-commit'
+PENDER_NAME = 'pre-commit.py'
 PLUGINS_DIR = 'pre-commit-plugins/'
-LOGLEVEL = logging.WARNING
-# END CONFIG
 
 TERM_BOLD = '\033[1m'
 TERM_END = '\033[0m'
+TERM_RED = '\033[31m'
 
 
 def initialise_logging():
     """Initialise logging."""
-    logging.basicConfig(level=LOGLEVEL)
+    if 'PENDER_DEBUG' in os.environ:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logging.basicConfig(level=level, format="{bold}{pender}:{reset} %(message)s".format(pender=PENDER_NAME, bold=TERM_BOLD, reset=TERM_END))
 
 
 def install_check():
@@ -39,14 +41,13 @@ def install_check():
     if choice in ('', 'Y', 'y', 'YES', 'yes', 'Yes'):
         dest_path = os.path.join(repo_dir, ".git/hooks/pre-commit")
         try:
-            print 'cp -p {source} {dest}'.format(source=source_path,
-                                                 dest=dest_path)
+            print('$ cp -p {source} {dest}'.format(source=source_path,
+                                                 dest=dest_path))
             shutil.copyfile(source_path, dest_path)
             shutil.copystat(source_path, dest_path)
-            print "Done."
             _rc = 0
         except StandardError as err:
-            print "Failed! ({e})".format(e=err)
+            print("Failed! ({e})".format(e=err))
             _rc = 1
     else:
         _rc = 1
@@ -60,8 +61,8 @@ def autoupdate_check():
     pender_hook_path = os.path.join(git_dir, 'hooks', 'pre-commit')
     logging.debug("Comparing %s to %s", pender_repo_path, pender_hook_path)
     if os.stat(pender_repo_path).st_mtime > os.stat(pender_hook_path).st_mtime:
-        print "Error: {name} has been updated, please run the repository's " \
-              "copy to update your installed version.".format(name=PENDER_NAME)
+        logging.error("{name} has been updated, please run the repository's " \
+              "copy to update your installed version.".format(name=PENDER_NAME))
         sys.exit(1)
 
 
@@ -72,10 +73,10 @@ def get_changed_files():
     try:
         changed_files = subprocess.check_output(changed_files_cmd).splitlines()
     except subprocess.CalledProcessError as err:
-        print "Couldn't determine changed files! Git error was:"
-        print "$ {}".format(' '.join(changed_files_cmd))
-        print err.output
+        logging.error("Couldn't determine changed files! Git error was:\n$ %s\n%s",
+                ' '.join(changed_files_cmd), err.output)
         sys.exit(1)
+
     logging.debug("Found %s changed files: %s", len(changed_files),
                   ", ".join(changed_files))
     return changed_files
@@ -95,8 +96,7 @@ def create_temp_file(temp_tree, index_file):
         args = ['git', 'cat-file', 'blob', ':0:{}'.format(index_file)]
         cached_string = subprocess.check_output(args)
     except subprocess.CalledProcessError as err:
-        print "Couldn't determine changed content for {}".format(index_file)
-        print err.output
+        logging.error("Couldn't determine changed content for %s.", index_file)
         sys.exit(1)
     temp_file = os.path.join(temp_dirpath, os.path.basename(index_file))
     with open(temp_file, 'w') as fil:
@@ -113,7 +113,7 @@ def get_plugins():
         if not os.path.isfile(plugin):
             logging.info("Non-file in plugin directory: %s", plugin)
             continue
-        if not os.access([plugin], os.X_OK):
+        if not os.access(plugin, os.X_OK):
             logging.info("Non-executable file in plugin directory: %s", plugin)
             continue
         plugins.append(plugin)
@@ -132,46 +132,42 @@ def get_mime_type(f):
 
 
 def run_plugin(plugin, real_file, temp_file, mime_type):
-    """Run plugin and return output only if vetoes the commit."""
+    """Run plugin and return (veto, output)."""
     args = [plugin, real_file, temp_file, mime_type]
     try:
-        p_output = subprocess.check_output(args, stderr=subprocess.STDOUT)
-    except EnvironmentError as err:
-        print "Unexpected error calling " \
-            "{} (\"{}\"), skipping.".format(plugin, err)
-    except subprocess.CalledProcessError as err:
-        p_output = err.output
-        if err.returncode == 10:
-            return p_output
-        else:
-            print "Unexpected error calling " \
-                "{} (\"{}\"), skipping.".format(plugin, err)
-            return None
+        p = subprocess.Popen(args, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    except OSError as err:
+        logging.warning("Couldn't run %s (%s), skipping.", plugin, err)
+        return (False, '')
+    output, _ = p.communicate()
+    if p.returncode == 0:
+        return (False, output)
+    elif p.returncode == 10:
+        return (True, output)
+    else:
+        logging.warning("%s returned unexpected exit code %s, skipping.", plugin, p.returncode)
+        return (False, output)
 
 
 def process_changed_files(temp_tree, changed_files, plugins):
     """Process each changed file."""
     errors = 0
     for index_file in changed_files:
+        plugin_errors = 0
         temp_file = create_temp_file(temp_tree, index_file)
-
-        # Determine MIME type
         mime_type = get_mime_type(index_file)
-
-        # Call every plugin with this file
         for plugin in plugins:
-            output = run_plugin(plugin, index_file, temp_file, mime_type)
-            if output:
-                errors += 1
-                print "{bold}{file}:{end}".format(file=index_file,
-                                                  bold=TERM_BOLD,
-                                                  end=TERM_END)
-                for line in output.splitlines():
-                    print '    {line}'.format(line=line)
+            veto, output = run_plugin(plugin, index_file, temp_file, mime_type)
+            if veto:
+                plugin_errors += 1
+                logging.info("%s%s vetoes commit.%s", TERM_RED + TERM_BOLD, plugin, TERM_END)
+            for line in output.splitlines():
+                logging.info('%s: %s', plugin, line)
+        if plugin_errors:
+            errors += 1
 
     if errors:
-        print "{bold}Found {errors} errors, aborting commit.{end}".format(
-            errors=errors, bold=TERM_BOLD, end=TERM_END)
+        logging.info("%sFound errors in %s files, aborting commit.%s", TERM_BOLD, errors, TERM_END)
         sys.exit(1)
     else:
         sys.exit(0)
@@ -184,8 +180,8 @@ if __name__ == '__main__':
     else:
         autoupdate_check()
 
-    TEMP_TREE = tempfile.mkdtemp()
     try:
+        TEMP_TREE = tempfile.mkdtemp()
         process_changed_files(TEMP_TREE, get_changed_files(), get_plugins())
     except KeyboardInterrupt:
         sys.stdout.flush()
