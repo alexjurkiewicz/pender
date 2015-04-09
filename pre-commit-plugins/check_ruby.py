@@ -4,6 +4,7 @@
 
 import sys
 import subprocess
+import distutils.spawn
 
 REAL_FILE = sys.argv[1]
 TEMP_FILE = sys.argv[2]
@@ -22,7 +23,7 @@ def check_erb():
         stdin=erb_proc.stdout,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
-    erb_proc.stdout.close()
+    erb_proc.stdout.close()  # XXX: is this right??
     output = ruby_proc.communicate()[0].strip()
     if output == 'Syntax OK':
         return PENDER_OK
@@ -51,8 +52,13 @@ if __name__ == '__main__':
             REAL_FILE.endswith('.erb') or
             FILE_MIME == 'text/x-ruby'):
         sys.exit(PENDER_OK)
-    if REAL_FILE.endswith('.erb'):
-        RC = max(PENDER_OK, check_erb())
-    else:  # .rb
-        RC = max(PENDER_OK, check_ruby())
-    sys.exit(RC)
+    if not distutils.spawn.find_executable('ruby'):
+        print "ruby not installed, skipping check."
+        sys.exit(1)
+    if REAL_FILE.endswith('.rb'):
+        sys.exit(check_ruby())
+    else:  # .erb
+        if not distutils.spawn.find_executable('erb'):
+            print "erb not installed, skipping check."
+            sys.exit(1)
+        sys.exit(check_erb())

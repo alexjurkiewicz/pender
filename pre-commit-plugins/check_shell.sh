@@ -6,15 +6,20 @@ FILE_MIME=$3
 PENDER_OK=0
 PENDER_VETO=10
 
-if [[ $FILE_MIME != 'text/x-shellscript' ]] && [[ $REAL_FILE != '*.sh' ]] ; then
+if [[ $REAL_FILE != '*.sh' ]] && [[ $FILE_MIME != 'text/x-shellscript' ]] ; then
     exit "$PENDER_OK"
 fi
 
 bash -n "$TEMP_FILE" 2>&1
 bash_rc=$?
 
-shellcheck "$TEMP_FILE"
-shellcheck_rc=$?
+if which shellcheck >/dev/null ; then
+    shellcheck "$TEMP_FILE"
+    shellcheck_rc=$?
+else
+    echo "shellcheck not installed, skipping shell script linting."
+    shellcheck_rc=0
+fi
 
 if [[ $bash_rc != 0 ]] || [[ $shellcheck_rc != 0 ]] ; then
     exit $PENDER_VETO

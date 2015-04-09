@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-"""
-A Pender plugin to check Python files.
-"""
+"""A Pender plugin to lint Python files."""
 
 import os
 import sys
@@ -15,8 +13,13 @@ FILE_MIME = sys.argv[3]
 PENDER_OK = 0
 PENDER_VETO = 10
 DEBUG = True if 'PENDER_DEBUG' in os.environ else False
+IGNORED_CODES = ('C0111',  # missing docstring -- redundant with pep257
+                 'C0303',  # trailing whitespace -- redundant with pep8
+                 'C0330',  # wrong continued indentation -- conflicts with pep8
+                 'W0511',  # xxx/fixme etc -- should not veto commit
+                 )
 
-available_linters = ('pylint', 'pep8', 'pep257', 'pyfake')
+available_linters = ('pylint', 'pep8', 'pep257')
 # Check dependencies are installed
 linters = []
 for linter in available_linters:
@@ -24,7 +27,10 @@ for linter in available_linters:
         linters.append(linter)
     else:
         print "Mising Python linter %s, you should install this!" % linter
-PYLAMA_ARGS = ('pylama', '-l', ','.join(linters), '-i', 'C0111,C0303', TEMP_FILE)
+PYLAMA_ARGS = ('pylama',
+               '-l', ','.join(linters),
+               '-i', ','.join(IGNORED_CODES), TEMP_FILE
+               )
 
 rc = PENDER_OK
 # Check the file is Python
@@ -56,4 +62,3 @@ except subprocess.CalledProcessError as err:
     sys.exit(PENDER_VETO)
 
 sys.exit(rc)
-

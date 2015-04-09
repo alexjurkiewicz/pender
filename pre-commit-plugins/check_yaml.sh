@@ -10,6 +10,12 @@ if [[ $REAL_FILE != *.yaml ]] ; then
         exit "$PENDER_OK"
 fi
 
+# See if yaml is installed
+if ! python -c 'import yaml' 2>/dev/null ; then
+    echo "Python-YAML is not installed, can't check YAML files."
+    exit $PENDER_OK
+fi
+
 python -c "import yaml; yaml.load(open('$TEMP_FILE'))" 2>&1 | awk '/^yaml/ {p=1} p;'
 syntax_rc=${PIPESTATUS[0]}
 
