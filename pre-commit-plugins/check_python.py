@@ -16,7 +16,7 @@ IGNORED_CODES = ('C0111',  # missing docstring -- redundant with pep257
                  'C0303',  # trailing whitespace -- redundant with pep8
                  'C0330',  # wrong continued indentation -- conflicts with pep8
                  'W0511',  # xxx/fixme etc -- should not veto commit
-                )
+                 )
 
 available_linters = ('pylint', 'pep8', 'pep257')
 # Check dependencies are installed
