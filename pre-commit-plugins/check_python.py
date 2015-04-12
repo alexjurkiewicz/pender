@@ -16,17 +16,15 @@ USE_PEP257 = True
 USE_YAPF = True
 # Max line length -- set to 0 to use each tool's default
 MAX_LINE_LENGTH = 0
-# Ignored linter error codes. Since every linter has unique codes,
-# it's just one big list.
+# Ignored linter error codes.
 PYLINT_IGNORED_CODES = (
-    'C0111',  # pylint missing docstring -- redundant with pep257
-    'C0303',  # pylint trailing whitespace -- redundant with pep8
-    'C0330',  # pylint wrong continued indentation -- conflicts with pep8
-    'W0511',  # pylint xxx/fixme etc -- should not veto commit
+    'C0111',  # missing docstring -- redundant with pep257
+    'C0303',  # trailing whitespace -- redundant with pep8
+    'C0330',  # wrong continued indentation -- conflicts with pep8
+    'W0511',  # xxx/fixme etc -- should not veto commit
 )
 PEP257_IGNORED_CODES = (
-    'D203',  # pep257 Expected 1 blank line *before* class docstring --
-    # conflicts with yapf, which doesn't expect this.
+    'D203',  # Expected 1 blank line *before* class docstring -- yapf conflict
 )
 # yapf coding style, could be 'google' or 'chromium'
 YAPF_STYLE = 'pep8'
