@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """A Pender plugin to lint Python files."""
 
-import os
 import sys
 import subprocess
 import distutils.spawn
@@ -11,12 +10,12 @@ TEMP_FILE = sys.argv[2]
 FILE_MIME = sys.argv[3]
 PENDER_OK = 0
 PENDER_VETO = 10
-DEBUG = True if 'PENDER_DEBUG' in os.environ else False
 IGNORED_CODES = ('C0111',  # missing docstring -- redundant with pep257
                  'C0303',  # trailing whitespace -- redundant with pep8
                  'C0330',  # wrong continued indentation -- conflicts with pep8
                  'W0511',  # xxx/fixme etc -- should not veto commit
                  )
+YAPF_STYLE = 'pep8'
 
 available_linters = ('pylint', 'pep8', 'pep257')
 # Check dependencies are installed
@@ -56,6 +55,22 @@ except subprocess.CalledProcessError as err:
         except ValueError:
             pass
         print '    {}'.format(line)
-    sys.exit(PENDER_VETO)
+    rc = PENDER_VETO
+
+# Check YAPF
+if distutils.spawn.find_executable('yapf'):
+    try:
+        YAPF_ARGS = ('yapf', '-d', '--style', YAPF_STYLE, TEMP_FILE)
+        output = subprocess.check_output(YAPF_ARGS, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print "yapf check failed, ignoring (%s)" % err.output
+
+    if output.strip():
+        print "yapf detects poor formatting:"
+        for line in output.splitlines():
+            print '    %s' % line
+        rc = PENDER_VETO
+else:
+    print "Mising Python cleaner yapf, you should install this!"
 
 sys.exit(rc)
