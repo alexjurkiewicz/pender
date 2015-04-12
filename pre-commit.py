@@ -85,8 +85,6 @@ def install_check():
     if choice in ('', 'Y', 'y', 'YES', 'yes', 'Yes'):
         dest_path = os.path.join(repo_dir, ".git/hooks/pre-commit")
         try:
-            print '$ cp -p {source} {dest}'.format(source=source_path,
-                                                   dest=dest_path)
             shutil.copyfile(source_path, dest_path)
             shutil.copystat(source_path, dest_path)
         except StandardError as err:
