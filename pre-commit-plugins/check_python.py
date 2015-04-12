@@ -4,6 +4,7 @@
 import os
 import sys
 import subprocess
+import distutils.spawn
 
 ####################
 # USER CONFIGURATION
@@ -32,11 +33,9 @@ YAPF_STYLE = 'pep8'
 ################
 # Real constants
 ################
-REAL_FILE = sys.argv[1]
-TEMP_FILE = sys.argv[2]
-FILE_MIME = sys.argv[3]
 PENDER_OK = 0
 PENDER_VETO = 10
+PENDER_ERR = 1
 DEBUG = True if 'PENDER_DEBUG' in os.environ else False
 
 
@@ -70,6 +69,27 @@ def check_linter(name, args, strip_first_line=False, output_is_error=False):
                 print '    {}'.format(line)
             success = False
     return success
+
+# MAIN PROGRAM STARTS HERE
+
+if sys.argv[1] == 'check':
+    pass
+elif sys.argv[1] == 'install':
+    for app, hint in (('python', 'https://www.python.org/downloads/'),
+                      ('pylint', 'http://www.pylint.org/#install'),
+                      ('pep8', 'http://pep8.readthedocs.org/en/latest/'),
+                      ('pep257', 'http://pep257.readthedocs.org/en/latest/'),
+                      ('yapf', 'https://github.com/google/yapf'), ):
+        if not distutils.spawn.find_executable(app):
+            print "Couldn't find %s (hint: %s)" % (app, hint)
+    sys.exit(0)
+else:
+    print "Unknown action %s" % sys.argv[1]
+    sys.exit(PENDER_ERR)
+
+REAL_FILE = sys.argv[2]
+TEMP_FILE = sys.argv[3]
+FILE_MIME = sys.argv[4]
 
 # Check the file is Python
 if not (REAL_FILE.endswith('.py') or FILE_MIME == 'text/x-python'):

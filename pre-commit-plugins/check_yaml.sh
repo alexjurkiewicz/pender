@@ -1,5 +1,20 @@
 #!/bin/bash
 
+case $1 in
+    install)
+        if ! python -c 'import yaml' 2>/dev/null ; then
+            echo "Python-YAML is not installed (hint: pip install PyYAML)"
+            exit 0
+        fi
+        ;;
+    check)
+        shift
+        ;;
+    *)
+        echo "Unknown action $1"
+        ;;
+esac
+
 REAL_FILE=$1
 TEMP_FILE=$2
 #FILE_MIME=$3
@@ -10,9 +25,8 @@ if [[ $REAL_FILE != *.yaml ]] ; then
         exit "$PENDER_OK"
 fi
 
-# See if yaml is installed
 if ! python -c 'import yaml' 2>/dev/null ; then
-    echo "Python-YAML is not installed, can't check YAML files."
+    echo "Python-YAML is not installed (hint: pip install PyYAML)"
     exit $PENDER_OK
 fi
 

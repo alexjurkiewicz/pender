@@ -27,9 +27,10 @@ Guidelines:
 
 * Plugins are executed once per-file per-commit.
 * Plugins are passed the following arguments:
-  1. Repository file path
-  2. Temporary commit data file path
-  3. MIME type (application/octet-stream if unknown)
+  1. `check`
+  2. Repository file path
+  3. Temporary commit data file path
+  4. MIME type (application/octet-stream if unknown)
 * When checking a file's contents, use the temporary commit data file rather than the repository file. There may be changes in the repository file that are not part of the commit (eg, in case of `git add -p`).
 * Plugins signal their decision by return code:
   * 0: OK the commit
@@ -37,6 +38,7 @@ Guidelines:
   * 1: Internal plugin error (commit is OKed)
   * Any other return code: Reserved (currently interpreted as plugin error)
 * Plugin stdout & stderr will always be shown.
+* When the pre-commit hook is installed, all plugins in the plugin dir are run with the `install` argument only. This is a chance for plugins to make noise about missing dependencies or any other setup they require. Info should be output to stdout.
 
 ## Todo
 

@@ -1,5 +1,20 @@
 #!/bin/bash
 
+case $1 in
+    install)
+        if ! which shellcheck >/dev/null 2>&1 ; then
+            echo "shellcheck not installed (hint: http://www.shellcheck.net/about.html)"
+            exit 0
+        fi
+        ;;
+    check)
+        shift
+        ;;
+    *)
+        echo "Unknown action $1"
+        ;;
+esac
+
 REAL_FILE=$1
 TEMP_FILE=$2
 FILE_MIME=$3

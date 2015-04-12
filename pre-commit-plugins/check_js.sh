@@ -1,5 +1,20 @@
 #!/bin/bash
 
+case $1 in
+    install)
+        if ! which jshint >/dev/null 2>&1 ; then
+            echo "jshint not installed (hint: http://jshint.com/install/)"
+            exit 0
+        fi
+        ;;
+    check)
+        shift
+        ;;
+    *)
+        echo "Unknown action $1"
+        ;;
+esac
+
 REAL_FILE=$1
 TEMP_FILE=$2
 PENDER_OK=0

@@ -7,12 +7,11 @@ PUPPET_LINT_IGNORE_RULES = []  # list
 
 import sys
 import subprocess
+import distutils.spawn
 
-REAL_FILE = sys.argv[1]
-TEMP_FILE = sys.argv[2]
-# FILE_MIME = sys.argv[3]
 PENDER_OK = 0
 PENDER_VETO = 10
+PENDER_ERR = 1
 
 
 def check_puppet():
@@ -53,5 +52,23 @@ def check_puppet():
     sys.exit(exit_code)
 
 
+def check_deps():
+    """Check dependencies are installed."""
+    if not distutils.spawn.find_executable('puppet'):
+        print "Couldn't find puppet (hint: " \
+            "https://puppetlabs.com/misc/download-options )."
+    if not distutils.spawn.find_executable('puppet-lint'):
+        print "Couldn't find puppet-lint (hint: gem install puppet-lint)"
+
+
 if __name__ == '__main__':
-    check_puppet()
+    if sys.argv[1] == 'check':
+        REAL_FILE = sys.argv[2]
+        TEMP_FILE = sys.argv[3]
+        # FILE_MIME = sys.argv[4]
+        check_puppet()
+    elif sys.argv[1] == 'install':
+        check_deps()
+    else:
+        print "Unknown action %s" % sys.argv[1]
+        sys.exit(PENDER_ERR)

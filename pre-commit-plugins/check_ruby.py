@@ -5,11 +5,9 @@ import sys
 import subprocess
 import distutils.spawn
 
-REAL_FILE = sys.argv[1]
-TEMP_FILE = sys.argv[2]
-FILE_MIME = sys.argv[3]
 PENDER_OK = 0
 PENDER_VETO = 10
+PENDER_ERR = 1
 
 
 def check_erb():
@@ -44,6 +42,23 @@ def check_ruby():
 
 
 if __name__ == '__main__':
+    if sys.argv[1] == 'check':
+        pass
+    elif sys.argv[1] == 'install':
+        for app, hint in (('ruby', 'https://www.ruby-lang.org/en/downloads/'),
+                          ('erb', 'https://www.ruby-lang.org/en/downloads/'),
+                          ):
+            if not distutils.spawn.find_executable(app):
+                print "Couldn't find %s (hint: %s)" % (app, hint)
+        sys.exit(0)
+    else:
+        print "Unknown action %s" % sys.argv[1]
+        sys.exit(PENDER_ERR)
+
+    REAL_FILE = sys.argv[2]
+    TEMP_FILE = sys.argv[3]
+    FILE_MIME = sys.argv[4]
+
     # See if we should run
     if not (REAL_FILE.endswith('.rb') or REAL_FILE.endswith('.erb') or
             FILE_MIME == 'text/x-ruby'):

@@ -94,7 +94,7 @@ def install_check():
             return PENDER_EXIT_ERR
     else:
         return PENDER_EXIT_ERR
-    run_plugin_update_checks()
+    install_plugins()
     return PENDER_EXIT_OK
 
 
@@ -110,9 +110,10 @@ def autoupdate_check():
         sys.exit(1)
 
 
-def run_plugin_update_checks():
-    """Run plugin update checks."""
-    pass
+def install_plugins():
+    """Run plugin install checks."""
+    for plugin in plugins():
+        plugin_install(plugin)
 
 
 def changed_files():
@@ -125,8 +126,7 @@ def changed_files():
         raise PenderError(
             "Couldn't determine changed files! Git error was:\n$ %s\n%s",
             ' '.join(changed_files_cmd), err.output)
-    logging.debug("Found %s changed files: %s", len(files),
-                  ", ".join(files))
+    logging.debug("Found %s changed files: %s", len(files), ", ".join(files))
     return files
 
 
@@ -145,7 +145,8 @@ def create_temp_file(temp_tree, index_file):
     temp_file = os.path.join(temp_dirpath, os.path.basename(index_file))
     with open(temp_file, 'w') as dest:
         try:
-            git = subprocess.Popen(git_args, stdout=dest,
+            git = subprocess.Popen(git_args,
+                                   stdout=dest,
                                    stderr=subprocess.PIPE)
         except OSError as e:
             raise PenderError(e)
@@ -179,9 +180,20 @@ def get_mime_type(path):
     return mime_type
 
 
-def run_plugin(path, real_file, temp_file, mime_type):
+def plugin_install(path):
+    """Run plugin install and log any output."""
+    args = (path, 'install')
+    try:
+        output = subprocess.check_output(args, stderr=subprocess.STDOUT)
+        for line in output.splitlines():
+            logging.info("%s: %s", path, line)
+    except subprocess.CalledProcessError as e:
+        logging.error("%s failed during setup. Output:\n%s", path, e.output)
+
+
+def plugin_check(path, real_file, temp_file, mime_type):
     """Run plugin and return (veto, output)."""
-    args = [path, real_file, temp_file, mime_type]
+    args = (path, 'check', real_file, temp_file, mime_type)
     try:
         plugin = subprocess.Popen(args,
                                   stderr=subprocess.STDOUT,
@@ -208,13 +220,14 @@ def process_changed_files(temp_tree):
         try:
             temp_file = create_temp_file(temp_tree, index_file)
         except PenderError as e:
-            logging.error("Couldn't create temp file for %s (%s)",
-                          index_file, e)
+            logging.error("Couldn't create temp file for %s (%s)", index_file,
+                          e)
             errors += 1
             continue
         mime_type = get_mime_type(index_file)
         for plugin in plugins():
-            veto, output = run_plugin(plugin, index_file, temp_file, mime_type)
+            veto, output = plugin_check(plugin, index_file, temp_file,
+                                        mime_type)
             if veto:
                 plugin_errors += 1
                 logging.info("%s%s vetoes %s:%s", TERM_RED + TERM_BOLD,
