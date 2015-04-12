@@ -19,6 +19,15 @@ TERM_BOLD = '\033[1m'
 TERM_END = '\033[0m'
 TERM_RED = '\033[31m'
 TERM_YELLOW = '\033[33m'
+PENDER_EXIT_OK = 0
+PENDER_EXIT_ERR = 1
+PENDER_EXIT_VETO = 10
+
+
+class PenderError(Exception):
+    """Simple wrapper."""
+
+    pass
 
 
 class PenderLoggingFormatter(logging.Formatter):
@@ -80,13 +89,13 @@ def install_check():
                                                    dest=dest_path)
             shutil.copyfile(source_path, dest_path)
             shutil.copystat(source_path, dest_path)
-            _rc = 0
         except StandardError as err:
             print "Failed! ({e})".format(e=err)
-            _rc = 1
+            return PENDER_EXIT_ERR
     else:
-        _rc = 1
-    sys.exit(_rc)
+        return PENDER_EXIT_ERR
+    run_plugin_update_checks()
+    return PENDER_EXIT_OK
 
 
 def autoupdate_check():
@@ -101,49 +110,53 @@ def autoupdate_check():
         sys.exit(1)
 
 
-def get_changed_files():
-    """Return a list of changed files."""
+def run_plugin_update_checks():
+    """Run plugin update checks."""
+    pass
+
+
+def changed_files():
+    """Iterable of changed files."""
     changed_files_cmd = ['git', 'diff-index', '--diff-filter=AM',
                          '--name-only', '--cached', 'HEAD']
     try:
-        changed_files = subprocess.check_output(changed_files_cmd).splitlines()
+        files = subprocess.check_output(changed_files_cmd).splitlines()
     except subprocess.CalledProcessError as err:
-        logging.error(
+        raise PenderError(
             "Couldn't determine changed files! Git error was:\n$ %s\n%s",
             ' '.join(changed_files_cmd), err.output)
-        sys.exit(1)
-
-    logging.debug("Found %s changed files: %s", len(changed_files),
-                  ", ".join(changed_files))
-    return changed_files
+    logging.debug("Found %s changed files: %s", len(files),
+                  ", ".join(files))
+    return files
 
 
 def create_temp_file(temp_tree, index_file):
-    """
-    Copy staged changes of index_file to same location in temp_tree.
-
-    FIXME: This reads the entire file into memory.
-    """
+    """Copy staged changes of index_file to same location in temp_tree."""
+    git_args = ['git', 'cat-file', 'blob', ':0:{}'.format(index_file)]
     repo_path = os.path.dirname(index_file).lstrip('/')
     temp_dirpath = os.path.join(temp_tree, repo_path)
+
     if repo_path and not os.path.isdir(temp_dirpath):
         os.makedirs(temp_dirpath, mode=0700)
-    try:
-        args = ['git', 'cat-file', 'blob', ':0:{}'.format(index_file)]
-        cached_string = subprocess.check_output(args)
-    except subprocess.CalledProcessError:
-        logging.error("Couldn't determine changed content for %s.", index_file)
-        sys.exit(1)
+
+    # We can't use check_output here, since we want to capture stderr
+    # for error diagnostics but check_output can only do so by merging into
+    # stdout (which we're using).
     temp_file = os.path.join(temp_dirpath, os.path.basename(index_file))
-    with open(temp_file, 'w') as fil:
-        fil.write(cached_string)
-        del cached_string
+    with open(temp_file, 'w') as dest:
+        try:
+            git = subprocess.Popen(git_args, stdout=dest,
+                                   stderr=subprocess.PIPE)
+        except OSError as e:
+            raise PenderError(e)
+        _, stderr = git.communicate()
+        if git.returncode:
+            raise PenderError(stderr)
     return temp_file
 
 
-def get_plugins():
-    """Return a list of available plugins."""
-    plugins = []
+def plugins():
+    """Iterable of available plugins."""
     for path in os.listdir(PLUGINS_DIR):
         plugin = os.path.join(PLUGINS_DIR, path)
         if not os.path.isfile(plugin):
@@ -152,8 +165,7 @@ def get_plugins():
         if not os.access(plugin, os.X_OK):
             logging.info("Non-executable file in plugin directory: %s", plugin)
             continue
-        plugins.append(plugin)
-    return plugins
+        yield plugin
 
 
 def get_mime_type(path):
@@ -178,9 +190,9 @@ def run_plugin(path, real_file, temp_file, mime_type):
         logging.warning("Couldn't run %s (%s), skipping.", plugin, err)
         return (False, '')
     output, _ = plugin.communicate()
-    if plugin.returncode == 0:
+    if plugin.returncode == PENDER_EXIT_OK:
         return (False, output)
-    elif plugin.returncode == 10:
+    elif plugin.returncode == PENDER_EXIT_VETO:
         return (True, output)
     else:
         logging.warning("%s returned unexpected exit code %s, skipping.",
@@ -188,14 +200,20 @@ def run_plugin(path, real_file, temp_file, mime_type):
         return (False, output)
 
 
-def process_changed_files(temp_tree, changed_files, plugins):
+def process_changed_files(temp_tree):
     """Process each changed file."""
     errors = 0
-    for index_file in changed_files:
+    for index_file in changed_files():
         plugin_errors = 0
-        temp_file = create_temp_file(temp_tree, index_file)
+        try:
+            temp_file = create_temp_file(temp_tree, index_file)
+        except PenderError as e:
+            logging.error("Couldn't create temp file for %s (%s)",
+                          index_file, e)
+            errors += 1
+            continue
         mime_type = get_mime_type(index_file)
-        for plugin in plugins:
+        for plugin in plugins():
             veto, output = run_plugin(plugin, index_file, temp_file, mime_type)
             if veto:
                 plugin_errors += 1
@@ -209,24 +227,26 @@ def process_changed_files(temp_tree, changed_files, plugins):
     if errors:
         logging.info("%sFound errors in %s files, aborting commit.%s",
                      TERM_BOLD, errors, TERM_END)
-        sys.exit(1)
+        return 1
     else:
-        sys.exit(0)
+        return 0
 
 
 if __name__ == '__main__':
     initialise_logging()
     if 'GIT_DIR' not in os.environ:
-        install_check()
+        rc = install_check()
     else:
         autoupdate_check()
-
-    try:
-        TEMP_TREE = tempfile.mkdtemp()
-        process_changed_files(TEMP_TREE, get_changed_files(), get_plugins())
-    except KeyboardInterrupt:
-        sys.stdout.flush()
-        sys.exit(1)
-    finally:
-        shutil.rmtree(TEMP_TREE)
-    sys.exit(0)
+        try:
+            TEMP_TREE = tempfile.mkdtemp()
+            rc = process_changed_files(TEMP_TREE)
+        except KeyboardInterrupt:
+            sys.stdout.flush()
+            rc = 1
+        except PenderError as e:
+            logging.error(e)
+            rc = 1
+        finally:
+            shutil.rmtree(TEMP_TREE)
+    sys.exit(rc)
