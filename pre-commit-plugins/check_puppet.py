@@ -42,7 +42,7 @@ def check_puppet():
     # puppet-lint
     try:
         lint_args = ['puppet-lint', '--fail-on-warnings'] + \
-            PUPPET_LINT_IGNORE_RULES + TEMP_FILE
+            PUPPET_LINT_IGNORE_RULES + [TEMP_FILE]
         subprocess.check_output(lint_args)
     except subprocess.CalledProcessError as err:
         exit_code = PENDER_VETO
