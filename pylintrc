@@ -1,0 +1,3 @@
+[MESSAGES CONTROL]
+# Disable invalid-name check, since pre-commit "module name" hash a dash in it
+disable=C0103
