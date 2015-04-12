@@ -2,8 +2,7 @@
 """
 Pender pre-commit hook.
 
-For more information, see:
-    https://github.com/alexjurkiewicz/pender
+For more information see https://github.com/alexjurkiewicz/pender
 """
 
 import os
