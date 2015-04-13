@@ -11,9 +11,10 @@ import shutil
 import subprocess
 import tempfile
 import logging
+import yaml
 
-PENDER_NAME = 'pre-commit.py'
-PLUGINS_DIR = 'pre-commit-plugins/'
+PENDER_NAME = sys.argv[0]
+CONFIG_NAME = os.path.splitext(os.path.basename(PENDER_NAME))[0] + '.yaml'
 
 TERM_BOLD = '\033[1m'
 TERM_END = '\033[0m'
@@ -22,6 +23,8 @@ TERM_YELLOW = '\033[33m'
 PENDER_EXIT_OK = 0
 PENDER_EXIT_ERR = 1
 PENDER_EXIT_VETO = 10
+GIT_EXIT_OK = 0
+GIT_EXIT_VETO = 1
 
 
 class PenderError(Exception):
@@ -61,13 +64,33 @@ class PenderLoggingFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 
+def load_config():
+    """Load pre-commit.yaml."""
+    if 'GIT_DIR' in os.environ:
+        path = os.path.join(os.environ['GIT_DIR'], '..', CONFIG_NAME)
+    else:
+        path = CONFIG_NAME
+    if os.path.isfile(path):
+        try:
+            with open(path, 'r') as f:
+                data = yaml.load(f)
+        except (OSError, yaml.parser.ParserError) as e:
+            raise PenderError("Couldn't load config: %s" % e)
+        if not isinstance(data, dict):
+            raise PenderError("Config toplevel isn't a mapping (dict).")
+        # Load stubs if any sections are missing
+        for section in ('pender', 'plugins'):
+            if section not in data:
+                data[section] = {}
+        return data
+
+
 def initialise_logging():
     """Initialise logging."""
     if 'PENDER_DEBUG' in os.environ:
         level = logging.DEBUG
     else:
         level = logging.INFO
-
     fmt = PenderLoggingFormatter()
     hdlr = logging.StreamHandler(sys.stdout)
     hdlr.setFormatter(fmt)
@@ -75,7 +98,7 @@ def initialise_logging():
     logging.root.setLevel(level)
 
 
-def install_check():
+def install_check(plugin_dir):
     """Ask if Pender should be installed."""
     source_path = sys.argv[0]
     repo_dir = os.path.dirname(source_path)
@@ -84,6 +107,7 @@ def install_check():
     choice = raw_input(install_q.format(repo_dir=repo_dir))
     if choice in ('', 'Y', 'y', 'YES', 'yes', 'Yes'):
         dest_path = os.path.join(repo_dir, ".git/hooks/pre-commit")
+        logging.debug("Installing to dest_path %s", dest_path)
         try:
             shutil.copyfile(source_path, dest_path)
             shutil.copystat(source_path, dest_path)
@@ -92,7 +116,7 @@ def install_check():
             return PENDER_EXIT_ERR
     else:
         return PENDER_EXIT_ERR
-    install_plugins()
+    install_plugins(plugin_dir)
     return PENDER_EXIT_OK
 
 
@@ -108,9 +132,9 @@ def autoupdate_check():
         sys.exit(1)
 
 
-def install_plugins():
+def install_plugins(plugin_dir):
     """Run plugin install checks."""
-    for plugin in plugins():
+    for plugin in plugins(plugin_dir):
         plugin_install(plugin)
 
 
@@ -124,7 +148,7 @@ def changed_files():
         raise PenderError(
             "Couldn't determine changed files! Git error was:\n$ %s\n%s",
             ' '.join(changed_files_cmd), err.output)
-    logging.debug("Found %s changed files: %s", len(files), ", ".join(files))
+    logging.debug("%s changed files: %s", len(files), ", ".join(files))
     return files
 
 
@@ -147,21 +171,23 @@ def create_temp_file(temp_tree, index_file):
                                    stdout=dest,
                                    stderr=subprocess.PIPE)
         except OSError as e:
-            raise PenderError(e)
+            raise PenderError("Couldn't create temp file for %s (%s)" %
+                              (index_file, e))
         _, stderr = git.communicate()
         if git.returncode:
             raise PenderError(stderr)
+    logging.debug("Created temp file %s", temp_file)
     return temp_file
 
 
-def plugins():
+def plugins(plugin_dir):
     """Iterable of available plugins."""
-    for path in os.listdir(PLUGINS_DIR):
-        plugin = os.path.join(PLUGINS_DIR, path)
+    for path in os.listdir(plugin_dir):
+        plugin = os.path.join(plugin_dir, path)
         if not os.path.isfile(plugin):
             logging.info("Non-file in plugin directory: %s", plugin)
             continue
-        if not os.access(plugin, os.X_OK):
+        elif not os.access(plugin, os.X_OK):
             logging.info("Non-executable file in plugin directory: %s", plugin)
             continue
         yield plugin
@@ -172,7 +198,7 @@ def get_mime_type(path):
     try:
         file_args = ['file', '--brief', '--mime-type', path]
         mime_type = subprocess.check_output(file_args).strip()
-    except (subprocess.CalledProcessError, EnvironmentError) as err:
+    except (subprocess.CalledProcessError, OSError) as err:
         logging.info("Couldn't determine MIME type of %s (\"%s\").", path, err)
         mime_type = 'application/octet-stream'
     return mime_type
@@ -182,6 +208,7 @@ def plugin_install(path):
     """Run plugin install and log any output."""
     args = (path, 'install')
     try:
+        logging.debug("Running %s", args)
         output = subprocess.check_output(args, stderr=subprocess.STDOUT)
         for line in output.splitlines():
             logging.info("%s: %s", path, line)
@@ -189,13 +216,15 @@ def plugin_install(path):
         logging.error("%s failed during setup. Output:\n%s", path, e.output)
 
 
-def plugin_check(path, real_file, temp_file, mime_type):
+def plugin_check(path, real_file, temp_file, mime_type, env):
     """Run plugin and return (veto, output)."""
     args = (path, 'check', real_file, temp_file, mime_type)
     try:
+        logging.debug("Running %s", args)
         plugin = subprocess.Popen(args,
                                   stderr=subprocess.STDOUT,
-                                  stdout=subprocess.PIPE)
+                                  stdout=subprocess.PIPE,
+                                  env=env)
     except OSError as err:
         logging.warning("Couldn't run %s (%s), skipping.", plugin, err)
         return (False, '')
@@ -210,24 +239,40 @@ def plugin_check(path, real_file, temp_file, mime_type):
         return (False, output)
 
 
-def process_changed_files(temp_tree):
+def plugin_env(plugin_path, plugin_config):
+    """Generate the environment for a particular plugin."""
+    name = os.path.splitext(os.path.basename(plugin_path))[0]
+    if name in plugin_config:
+        env = os.environ.copy()
+        if plugin_config[name]:
+            for key, value in plugin_config[name].iteritems():
+                logging.debug("Adding %s to environment for %s", key, name)
+                env["PENDER_%s" % key] = value
+    else:
+        env = os.environ
+    return env
+
+
+def process_changed_files(temp_tree, plugin_dir, plugin_config):
     """Process each changed file."""
     errors = 0
     for index_file in changed_files():
-        plugin_errors = 0
+        logging.debug("Checking %s...", index_file)
         try:
             temp_file = create_temp_file(temp_tree, index_file)
         except PenderError as e:
-            logging.error("Couldn't create temp file for %s (%s)", index_file,
-                          e)
+            logging.error(e)
             errors += 1
             continue
         mime_type = get_mime_type(index_file)
-        for plugin in plugins():
+
+        plugin_errors = False
+        for plugin in plugins(plugin_dir):
+            env = plugin_env(plugin, plugin_config)
             veto, output = plugin_check(plugin, index_file, temp_file,
-                                        mime_type)
+                                        mime_type, env)
             if veto:
-                plugin_errors += 1
+                plugin_errors = True
                 logging.info("%s%s vetoes %s:%s", TERM_RED + TERM_BOLD,
                              os.path.basename(plugin), index_file, TERM_END)
             for line in output.splitlines():
@@ -236,28 +281,42 @@ def process_changed_files(temp_tree):
             errors += 1
 
     if errors:
-        logging.info("%sFound errors in %s files, aborting commit.%s",
-                     TERM_BOLD, errors, TERM_END)
-        return 1
+        logging.error("Found errors in %s files, aborting commit.", errors)
+        return GIT_EXIT_VETO
     else:
-        return 0
+        return GIT_EXIT_OK
 
 
-if __name__ == '__main__':
+def main():
+    """Main application."""
     initialise_logging()
+    try:
+        config = load_config()
+    except PenderError as e:
+        logging.error(e)
+        sys.exit(GIT_EXIT_VETO)
+    if config['pender'].get('debug'):
+        logging.root.setLevel(logging.DEBUG)
+
     if 'GIT_DIR' not in os.environ:
-        rc = install_check()
+        rc = install_check(config['pender']['plugin_dir'])
     else:
         autoupdate_check()
         try:
-            TEMP_TREE = tempfile.mkdtemp()
-            rc = process_changed_files(TEMP_TREE)
+            temp_tree = tempfile.mkdtemp()
+            rc = process_changed_files(temp_tree,
+                                       config['pender']['plugin_dir'],
+                                       config['plugins'])
         except KeyboardInterrupt:
             sys.stdout.flush()
-            rc = 1
+            rc = GIT_EXIT_VETO
         except PenderError as e:
             logging.error(e)
-            rc = 1
+            rc = GIT_EXIT_VETO
         finally:
-            shutil.rmtree(TEMP_TREE)
+            shutil.rmtree(temp_tree)
     sys.exit(rc)
+
+
+if __name__ == '__main__':
+    main()
