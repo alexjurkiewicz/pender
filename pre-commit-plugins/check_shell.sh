@@ -4,8 +4,11 @@
 PENDER_OK=0
 PENDER_VETO=10
 
-# See if shellcheck is installed, print a message and return 1 if not
-shellcheck_installed() {
+# See if we should use shellcheck
+use_shellcheck() {
+    if [[ -n $PENDER_skip_shellcheck ]] ; then
+        return 1
+    fi
     if ! which shellcheck >/dev/null 2>&1 ; then
         echo "shellcheck not installed (hint: http://www.shellcheck.net/about.html)"
         return 1
@@ -23,7 +26,7 @@ main() {
     bash_rc=$?
 
     # Lint file with shellcheck
-    if shellcheck_installed ; then
+    if use_shellcheck ; then
         shellcheck "$TEMP_FILE"
         shellcheck_rc=$?
     else
@@ -41,7 +44,7 @@ main() {
 # Program starts here
 case $1 in
     install)
-        shellcheck_installed
+        use_shellcheck
         exit 0
         ;;
     check)
