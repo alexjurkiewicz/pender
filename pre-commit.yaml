@@ -5,10 +5,11 @@ plugins:
     check_python:
         #use_pep257: false
         #max_line_length: 140
-        #pylint_ignored_codes:
-        #    - C0303 # trailing whitespace -- redundant with pep8
-        #    - C0330 # wrong continued indentation -- conflicts with pep8
-        #    - W0511 # xxx/fixme etc comments -- should not veto commit
-        #    - C0103 # invalid name -- breaks on 'pre-commit' as a module name
-    check_shell:
-        skip_shellcheck: true
+        pylint_ignored_codes:
+            # Default ignored codes
+            - C0303 # trailing whitespace -- redundant with pep8
+            - C0330 # wrong continued indentation -- conflicts with pep8
+            - W0511 # xxx/fixme etc comments -- should not veto commit
+            # Extra additions
+            - C0103 # invalid name -- breaks on 'pre-commit' as a module name
+            - W0142 # Used * or ** magic -- I like this language feature
