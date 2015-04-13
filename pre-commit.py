@@ -13,8 +13,11 @@ import tempfile
 import logging
 import yaml
 
-PENDER_NAME = sys.argv[0]
-CONFIG_NAME = os.path.splitext(os.path.basename(PENDER_NAME))[0] + '.yaml'
+if 'GIT_DIR' in os.environ:
+    PENDER_NAME = os.path.basename(sys.argv[0]) + '.py'
+else:
+    PENDER_NAME = os.path.basename(sys.argv[0])
+CONFIG_NAME = os.path.splitext(PENDER_NAME)[0] + '.yaml'
 
 TERM_BOLD = '\033[1m'
 TERM_END = '\033[0m'
@@ -43,8 +46,10 @@ class PenderLoggingFormatter(logging.Formatter):
     def __init__(self):
         """Set up simple override for err/warn messages."""
         self.base_fmt = "{pender}: %(message)s".format(pender=PENDER_NAME)
-        self.err_fmt = "%s%s%s" % (TERM_RED, self.base_fmt, TERM_END)
-        self.warn_fmt = "%s%s%s" % (TERM_YELLOW, self.base_fmt, TERM_END)
+        self.err_fmt = "%s%s%s" % (TERM_BOLD + TERM_RED, self.base_fmt,
+                                   TERM_END)
+        self.warn_fmt = "%s%s%s" % (TERM_BOLD + TERM_YELLOW, self.base_fmt,
+                                    TERM_END)
         logging.Formatter.__init__(self, self.base_fmt)
 
     def format(self, record):
@@ -247,7 +252,7 @@ def plugin_env(plugin_path, plugin_config):
         if plugin_config[name]:
             for key, value in plugin_config[name].iteritems():
                 logging.debug("Adding %s to environment for %s", key, name)
-                env["PENDER_%s" % key] = value
+                env["PENDER_%s" % key] = str(value)
     else:
         env = os.environ
     return env
@@ -273,10 +278,10 @@ def process_changed_files(temp_tree, plugin_dir, plugin_config):
                                         mime_type, env)
             if veto:
                 plugin_errors = True
-                logging.info("%s%s vetoes %s:%s", TERM_RED + TERM_BOLD,
-                             os.path.basename(plugin), index_file, TERM_END)
+                logging.error("%s vetoes %s:", os.path.basename(plugin),
+                              index_file)
             for line in output.splitlines():
-                logging.info('%s: %s', os.path.basename(plugin), line)
+                logging.info(line)
         if plugin_errors:
             errors += 1
 
