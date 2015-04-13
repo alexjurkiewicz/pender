@@ -1,23 +1,19 @@
-# PENDER
+# Pender
 
-A lightweight Git pre-commit hook wrapper.
-
-## Overview
-
-Pender is a Git pre-commit hook that lets you write modular pre-commit checks in a simplified environment.
+Pender is a Git pre-commit hook manager that lets you write checks in a simplified environment.
 
 Three benefits over writing a real pre-commit hook yourself:
 
 1. **Split your hook into multiple plugins** (per-language linting, site-specific checks, etc)
 2. **Language-agnostic**. Plugins are executable files of any language.
-3. **Plugins deal with a simplified environment**. Pender eliminates a lot of boilerplate from your hook's code, and even supports tricky things like partial commits (`git add -p`)!
+3. **Simplified check environment**. Plugins are run per-file per-commit and Pender provides support for tricky things like partial commits (`git add -p`), reducing boilerplate code.
 
 ## Installation
 
-Pender is intended to be copied into your repository for all users to (optionally) use.
+Pender is intended to be copied in to your repository for all developers to use. It's written in Python 2 and works on OSX/Linux.
 
 1. Copy `pre-commit.py` and `pre-commit-plugins/` to your repo's base directory.
-2. Each user should run `pre-commit.py` to install Pender.
+2. Each developer can run `pre-commit.py` to install Pender.
 
 ## Writing Pender Plugins
 

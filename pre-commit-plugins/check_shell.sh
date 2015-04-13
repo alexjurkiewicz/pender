@@ -1,43 +1,56 @@
 #!/bin/bash
 
+# Exit codes
+PENDER_OK=0
+PENDER_VETO=10
+
+# See if shellcheck is installed, print a message and return 1 if not
+shellcheck_installed() {
+    if ! which shellcheck >/dev/null 2>&1 ; then
+        echo "shellcheck not installed (hint: http://www.shellcheck.net/about.html)"
+        return 1
+    fi
+}
+
+main() {
+    # Check the file is a shell script
+    if ! ( [[ $REAL_FILE == *.sh ]] || [[ $FILE_MIME == 'text/x-shellscript' ]] ) ; then
+        exit "$PENDER_OK"
+    fi
+
+    # Check syntax with bash -n
+    bash -n "$TEMP_FILE" 2>&1
+    bash_rc=$?
+
+    # Lint file with shellcheck
+    if shellcheck_installed ; then
+        shellcheck "$TEMP_FILE"
+        shellcheck_rc=$?
+    else
+        shellcheck_rc=0
+    fi
+
+    # Veto the commit if either check failed
+    if [[ $bash_rc != 0 ]] || [[ $shellcheck_rc != 0 ]] ; then
+        exit $PENDER_VETO
+    else
+        exit $PENDER_OK
+    fi
+}
+
+# Program starts here
 case $1 in
     install)
-        if ! which shellcheck >/dev/null 2>&1 ; then
-            echo "shellcheck not installed (hint: http://www.shellcheck.net/about.html)"
-            exit 0
-        fi
+        shellcheck_installed
+        exit 0
         ;;
     check)
-        shift
+        REAL_FILE=$2
+        TEMP_FILE=$3
+        FILE_MIME=$4
+        main
         ;;
     *)
         echo "Unknown action $1"
         ;;
 esac
-
-REAL_FILE=$1
-TEMP_FILE=$2
-FILE_MIME=$3
-PENDER_OK=0
-PENDER_VETO=10
-
-if [[ $REAL_FILE != '*.sh' ]] && [[ $FILE_MIME != 'text/x-shellscript' ]] ; then
-    exit "$PENDER_OK"
-fi
-
-bash -n "$TEMP_FILE" 2>&1
-bash_rc=$?
-
-if which shellcheck >/dev/null ; then
-    shellcheck "$TEMP_FILE"
-    shellcheck_rc=$?
-else
-    echo "shellcheck not installed, skipping shell script linting."
-    shellcheck_rc=0
-fi
-
-if [[ $bash_rc != 0 ]] || [[ $shellcheck_rc != 0 ]] ; then
-    exit $PENDER_VETO
-else
-    exit $PENDER_OK
-fi
