@@ -12,8 +12,9 @@ Three benefits over writing a real pre-commit hook yourself:
 
 Pender is intended to be copied in to your repository for all developers to use. It's written in Python 2 and works on OSX/Linux.
 
-1. Copy `pre-commit.py` and `pre-commit-plugins/` to your repo's base directory.
-2. Each developer can run `pre-commit.py` to install Pender.
+1. Copy `pre-commit.py`, `pre-commit.yaml` and `pre-commit-plugins/` to your repo's base directory.
+2. Modify `pre-commit.yaml` as required.
+3. Each developer can run `pre-commit.py` to install Pender into their local repository.
 
 ## Writing Pender Plugins
 
