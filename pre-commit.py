@@ -276,8 +276,13 @@ def plugin_env(plugin_path, plugin_config):
         env = os.environ.copy()
         if plugin_config[name]:
             for key, value in plugin_config[name].iteritems():
-                logging.debug("Adding %s to environment for %s", key, name)
-                env["PENDER_%s" % key] = str(value)
+                if isinstance(value, str):
+                    val = str(value)
+                else:
+                    val = ','.join(value)
+                env["PENDER_%s" % key] = val
+                logging.debug("Added %s=%s to environment for %s", key,
+                              repr(val), name)
     else:
         env = os.environ
     return env
