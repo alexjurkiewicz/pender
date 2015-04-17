@@ -13,3 +13,4 @@ plugins:
             # Extra additions
             - C0103 # invalid name -- breaks on 'pre-commit' as a module name
             - W0142 # Used * or ** magic -- I like this language feature
+            - C0325 # parens for print -- used for py3 compat
