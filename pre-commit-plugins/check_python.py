@@ -80,10 +80,16 @@ def get_config():
     # Max line length -- set to 0 to use each tool's default
     config['max_line_length'] = os.environ.get("PENDER_max_line_length", 0)
     # Ignored linter error codes.
-    config['pylint_ignored_codes'] = os.environ.get(
-        "PENDER_pylint_ignored_codes", ['C0303', 'C0330', 'W0511'])
-    config['pep257_ignored_codes'] = os.environ.get(
-        "PENDER_pep257_ignored_codes", ["D203"])
+    if "PENDER_pylint_ignored_codes" in os.environ:
+        config['pylint_ignored_codes'] = \
+            os.environ['PENDER_pylint_ignored_codes'].split(',')
+    else:
+        config['pylint_ignored_codes'] = ['C0303', 'C0330', 'W0511']
+    if "PENDER_pep257_ignored_codes" in os.environ:
+        config['pep257_ignored_codes'] = \
+            os.environ["PENDER_pep257_ignored_codes"].split(',')
+    else:
+        config['pep257_ignored_codes'] = ["D203"]
     config['yapf_style'] = os.environ.get("PENDER_yapf_style", "pep8")
 
     return config
