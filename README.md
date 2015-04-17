@@ -16,34 +16,20 @@ Pender is intended to be copied in to your repository for all developers to use.
 2. Modify `pre-commit.yaml` as required.
 3. Each developer can run `pre-commit.py` to install Pender into their local repository.
 
-## Writing Pender Plugins
+## How Plugins Work
 
 Pender plugins are executable files, and can be written in any language. Read [check_shell.sh](pre-commit-plugins/check_shell.sh) for a simple example.
 
-Guidelines:
+You can configure plugins in `pre-commit.yaml`. See each plugin's header for help on its available options.
 
-* Plugins are executed once per-file per-commit.
-* Plugins are passed the following arguments:
-  1. `check`
-  2. Repository file path
-  3. Temporary commit data file path
-  4. MIME type (application/octet-stream if unknown)
-* When checking a file's contents, use the temporary commit data file rather than the repository file. There may be changes in the repository file that are not part of the commit (eg, in case of `git add -p`).
-* Plugins signal their decision by return code:
-  * 0: OK the commit
-  * 10: Veto the commit
-  * 1: Internal plugin error (commit is OKed)
-  * Any other return code: Reserved (currently interpreted as plugin error)
-* Plugin stdout & stderr will always be shown.
-* When the pre-commit hook is installed, all plugins in the plugin dir are run with the `install` argument only. This is a chance for plugins to make noise about missing dependencies or any other setup they require. Info should be output to stdout.
+Information about writing plugins can be found in [PLUGINS.md](PLUGINS.md).
 
 ## Todo
 
-* Multi-threaded plugin execution for speed
-* Non-global installation
-* More plugins
+* Multi-thread plugin execution for speed
 * Improve existing plugins
-* Write language linter plugins in their language (eg check_ruby.py -> check_ruby.rb)
+* More plugins
+* Non-global installation
 
 ## License
 
