@@ -117,7 +117,7 @@ def install_check(plugin_dir):
             shutil.copyfile(source_path, dest_path)
             shutil.copystat(source_path, dest_path)
         except StandardError as err:
-            print "Failed! ({e})".format(e=err)
+            logging.error("Failed! (%s)", err)
             return PENDER_EXIT_ERR
     else:
         return PENDER_EXIT_ERR
@@ -164,7 +164,7 @@ def create_temp_file(temp_tree, index_file):
     temp_dirpath = os.path.join(temp_tree, repo_path)
 
     if repo_path and not os.path.isdir(temp_dirpath):
-        os.makedirs(temp_dirpath, mode=0700)
+        os.makedirs(temp_dirpath, mode=0o700)
 
     # We can't use check_output here, since we want to capture stderr
     # for error diagnostics but check_output can only do so by merging into
