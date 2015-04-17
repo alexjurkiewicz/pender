@@ -45,23 +45,23 @@ def check_lint(name, args, strip_first_line=False, output_is_error=False):
     Return boolean success.
     """
     if DEBUG:
-        print 'check_linter', name, args, strip_first_line, output_is_error
+        print('check_linter', name, args, strip_first_line, output_is_error)
     success = True
     try:
         p = subprocess.Popen(args,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT)
     except OSError as e:
-        print "Couldn't start %s, skipping ('%s')" % (name, e)
+        print("Couldn't start %s, skipping ('%s')" % (name, e))
     else:
         stdout, _ = p.communicate()
         if p.returncode or (output_is_error and stdout.strip()):
-            print "%s problems:" % name
+            print("%s problems:" % name)
             lines = stdout.splitlines()
             if strip_first_line:
                 lines = lines[1:]
             for line in lines:
-                print '    {}'.format(line)
+                print('    {}'.format(line))
             success = False
     return success
 
@@ -97,7 +97,7 @@ def install():
                       ('pep257', 'http://pep257.readthedocs.org/en/latest/'),
                       ('yapf', 'https://github.com/google/yapf'), ):
         if not distutils.spawn.find_executable(app):
-            print "Couldn't find %s (hint: %s)" % (app, hint)
+            print("Couldn't find %s (hint: %s)" % (app, hint))
 
 
 def check():
@@ -168,7 +168,7 @@ def main():
         install()
         sys.exit()
     else:
-        print "Unknown action %s" % sys.argv[1]
+        print("Unknown action %s" % sys.argv[1])
         sys.exit(PENDER_ERR)
 
 # MAIN PROGRAM STARTS HERE
