@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-"""Pender plugin to check Puppet files using puppet syntax and puppet-lint."""
+"""Pender plugin to check Puppet files using puppet syntax and puppet-lint.
+
+There are no configuration options.
+"""
 
 # CHECK CONFIG
 PUPPET_LINT_IGNORE_RULES = []  # list

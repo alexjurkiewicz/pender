@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# A Pender plugin to lint JS files. Uses jshint.
+# There are no configuration options.
+
 case $1 in
     install)
         if ! which jshint >/dev/null 2>&1 ; then

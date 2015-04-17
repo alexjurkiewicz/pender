@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# A Pender plugin to check YAML files. Uses python-yaml.
+# There are no configuration options.
+
 case $1 in
     install)
         if ! python -c 'import yaml' 2>/dev/null ; then

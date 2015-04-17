@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# A Pender plugin to lint shell scripts. Uses bash & shellcheck.
+# Configuration:
+#   skip_shellcheck: if set to anything, don't try to use shellcheck.
+
 # Exit codes
 PENDER_OK=0
 PENDER_VETO=10

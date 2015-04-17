@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-"""A Pender plugin to check Ruby & ERB files."""
+"""A Pender plugin to check Ruby & ERB file syntax.
+
+There are no configuration options.
+"""
 
 import sys
 import subprocess
